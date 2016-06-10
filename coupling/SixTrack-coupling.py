@@ -2,10 +2,11 @@
 
 import os
 import math as m
+import socket
 
 # Configuration
 Nturns = 20
-Nbunches = 10
+Nbunches = 2808
 
 BDEX_writePipe_name = "/tmp/BDEX1" #For writing particles to SixTrack
 BDEX_readPipe_name = "/tmp/BDEX2"  #For reading particles from SixTrack
@@ -14,7 +15,7 @@ DYNK_writePipe_name = "/tmp/DYNK1" #For writing element attributes to SixTrack
 DYNK_readPipe_name =  "/tmp/DYNK2" #For selecting which element attributes to write to SixTrack
 
 
-LLRFsim_online = False
+LLRFsim_online = True
 
 LLRFsim_host = "127.0.0.1"
 LLRFsim_port = 4012
@@ -145,12 +146,9 @@ assert DYNK_readPipe_line == "INIT ID=AR1_P for FUN=pipe_P1\n"
 
 #Open LLRFsim TCP/IP connection
 if LLRFsim_online:
-    pass
-else:
-    LLRF_Vt = 3e6 #[V]
-    LLRF_phi = 90.0 #[deg]
-    LLRF_fcav = 4e8 #[Hz]
-
+    LLRFsim_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    LLRFsim_socket.connect((LLRFsim_host, LLRFsim_port))
+    
 print "Starting tracking:"
 for turn in xrange(Nturns):
     for bunchNum in xrange(Nbunches):
@@ -160,11 +158,18 @@ for turn in xrange(Nturns):
         
         #Read updated (or initial) cavity parameters from LLRFsim
         if LLRFsim_online:
-            # TODO
-            pass
+            LLRFsim_recdata = LLRFsim_socket.recv(1024)
+            print "Recieved from LLRFsim: '" + LLRFsim_recdata[:-1] + "'"
+            LLRFsim_recdata_split = LLRFsim_recdata.split()
+            
+            LLRF_Vt   = float(LLRFsim_recdata_split[1]) #[V]
+            LLRF_phi  = float(LLRFsim_recdata_split[2]) #[deg]
+            LLRF_fcav = float(LLRFsim_recdata_split[3]) #[Hz]
         else:
-            #Don't change LLRF_{Vt,phi,fcav}            
-            pass
+            #Don't change LLRF_{Vt,phi,fcav}
+            LLRF_Vt   = 3e6  #[V]
+            LLRF_phi  = 90.0 #[deg]
+            LLRF_fcav = 4e8  #[Hz]
         
         #Send updated cavity parameters to SixTrack
         print "Updating voltage & phase using DYNK:"
@@ -239,9 +244,11 @@ for turn in xrange(Nturns):
             
         #Read bunch parameters at cavity from SixTrack
         # TODO
+        x_mean   = 0.0001 #[m]
+        phi_mean = 2      #[deg]
 
         #Send bunch parameters at cavity to LLRFsim
-
+        LLRFsim_socket.send("bunchnum %d %d %g %g\n" % (bunchNum+1, turn+1, x_mean, phi_mean) )
 
 #Close connections
 BDEX_readPipe_line = BDEX_readPipe.read()
@@ -253,4 +260,4 @@ BDEX_readPipe.close()
 DYNK_writePipe.close()
 DYNK_readPipe.close()
 if LLRFsim_online:
-    pass
+    LLRFsim_socket.close()
