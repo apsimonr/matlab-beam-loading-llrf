@@ -22,19 +22,42 @@ LLRFsim_port = 4012
 
 bunches = []
 class Bunch:
-    particles         = None # x, xp, y, yp, z, E
-    particles_strings = None #BDEX format: xv(1,j) yv(1,j) xv(2,j) yv(2,j) sigmv(j) ejv(j) ejfv(j) rvv(j) dpsv(j) oidpsv(j) dpsv1(j),nlostp(j)
+    particles         = None # x, xp, y, yp, z, E (floating point numbers)
+    particles_strings = None #BDEX format: xv(1,j) yv(1,j) xv(2,j) yv(2,j) sigmv(j) ejv(j) ejfv(j) rvv(j) dpsv(j) oidpsv(j) dpsv1(j), nlostp(j)
     
     def __init__(self):
         self.particles = []
         self.particles_strings = []
 
     def makeParticlesFromStrings(self):
-        "Convert the particles in the"
-        pass
+        "Convert the particles in the self.particles_strings array to floating point numbers that can be processed by get_average_x etc."
+        assert len(self.particles) == 0
+        for ps in self.particles_strings:
+            ps_split = ps.split()
+            padd = (float(ps_split[0]), float(ps_split[1]), float(ps_split[2]), float(ps_split[3]), float(ps_split[4]), float(ps_split[5]))
+            #padd = map(float,ps_split[: ....
+            self.particles.append(padd)
+            
     def makeStringsFromParticles(self):
-        pass
-    
+        "Convert the particles in the self.particles array to strings which can be written to BDEX. This should only be done during initialization."
+
+        assert len(self.particles_strings) == 0
+        nlostp = 0
+        pma = 938.276
+        e0=7e6
+        e0f=m.sqrt(e0**2-pma**2)
+        for p in self.particles:
+            ejv=p[5]
+            ejfv = m.sqrt(ejv**2-pma**2)
+            rvv = ejv*e0f/(e0*ejfv)
+            dpsv = (ejfv-e0f)/e0f
+            oidpsv = 1/(1+dpsv)
+            dpsv1=dpsv*1e3*oidpsv
+            nlostp+=1
+
+            ps = ("%g "*11 + "%d") % (p[0],p[1], p[2],p[3], p[4], p[5], ejfv, rvv, dpsv, oidpsv, dpsv1, nlostp)
+            self.particles_strings.append(ps)
+            
     def get_average_x(self):
         pass
 
@@ -123,14 +146,15 @@ assert DYNK_readPipe_line == "INIT ID=AR1_P for FUN=pipe_P1\n"
 #Open LLRFsim TCP/IP connection
 if LLRFsim_online:
     pass
-LLRF_Vt = 3e6 #[V]
-LLRF_phi = 90.0 #[deg]
-LLRF_fcav = 4e8 #[Hz]
+else:
+    LLRF_Vt = 3e6 #[V]
+    LLRF_phi = 90.0 #[deg]
+    LLRF_fcav = 4e8 #[Hz]
 
 print "Starting tracking:"
 for turn in xrange(Nturns):
     for bunchNum in xrange(Nbunches):
-        sixTurn = (turn+1)*(bunchNum+1)
+        sixTurn = bunchNum + turn*Nbunches + 1
         print
         print "turn/bunchNum/sixTurn = ", turn, bunchNum,sixTurn
         
@@ -149,7 +173,7 @@ for turn in xrange(Nturns):
         print "DYNK_readPipe_line: '" + DYNK_readPipe_line[:-1] + "'"
         assert DYNK_readPipe_line.startswith("GET ID=AR1_V TURN=")
         DYNK_readPipe_line_turn = int(DYNK_readPipe_line.split()[-1])
-        assert DYNK_readPipe_line_turn == sixTurn
+        assert DYNK_readPipe_line_turn == sixTurn, str(DYNK_readPipe_line_turn)+" "+str(sixTurn)
         DYNK_writePipe.write(str(LLRF_Vt/1e6)+"\n")
         DYNK_writePipe.flush()
         #Phase:
@@ -169,6 +193,11 @@ for turn in xrange(Nturns):
             bunch_discard = Bunch.loadParticlesBDEX(BDEX_readPipe)
             print "Discarded bunch:",  bunch_discard
 
+            #Confirm BDEX state OK prepare to write
+            BDEX_readPipe_line = BDEX_readPipe.readline()
+            print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
+            assert BDEX_readPipe_line == "BDEX WAITING...\n"
+            
             #Write bunch 1 to SixTrack
             bunches[bunchNum].writeParticlesBDEX(BDEX_writePipe)
 
@@ -176,13 +205,37 @@ for turn in xrange(Nturns):
             BDEX_readPipe_line = BDEX_readPipe.readline()
             print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
             assert BDEX_readPipe_line == "BDEX TRACKING...\n"
+            
         elif bunchNum == 1:
             #Wrap around the bunchNum
             bunches[-1].loadParticlesBDEX(BDEX_readPipe)
+
+            #Confirm BDEX state OK prepare to write
+            BDEX_readPipe_line = BDEX_readPipe.readline()
+            print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
+            assert BDEX_readPipe_line == "BDEX WAITING...\n"
+            
             bunches[1].writeParticlesBDEX(BDEX_writePipe)
+
+            
+            #Confirm BDEX state OK and advance pipe
+            BDEX_readPipe_line = BDEX_readPipe.readline()
+            print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
+            assert BDEX_readPipe_line == "BDEX TRACKING...\n"
         else:
             bunches[-1].loadParticlesBDEX(BDEX_readPipe)
+
+            #Confirm BDEX state OK prepare to write
+            BDEX_readPipe_line = BDEX_readPipe.readline()
+            print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
+            assert BDEX_readPipe_line == "BDEX WAITING...\n"
+            
             bunches[1].writeParticlesBDEX(BDEX_writePipe)
+
+            #Confirm BDEX state OK and advance pipe
+            BDEX_readPipe_line = BDEX_readPipe.readline()
+            print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
+            assert BDEX_readPipe_line == "BDEX TRACKING...\n"
             
         #Read bunch parameters at cavity from SixTrack
         # TODO
