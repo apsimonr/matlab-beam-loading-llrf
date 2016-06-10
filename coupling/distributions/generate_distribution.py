@@ -10,8 +10,11 @@ from longitudinalDyn import longitudinalHamiltonian
 Hcalculator = longitudinalHamiltonian("HL_coll")
 Hmargin = -0.005  #Hamiltonian to accept below
 
-def dist_generator(particles, emittance, beta, bunch, spread, factor, seed):
+def dist_generator(particles, emittance, beta, bunch, spread, factor, seed, orbit=None ):
 
+    if orbit == None:
+        orbit = (0.0,0.0,0.0,0.0)
+    
     # Proton mass [eV/c^2], energy [eV], number of particles, relativistic gamma, relativistic beta
     # --------------------------------------------------------------------------------------------------------------
     mp = 0.938272046e9
@@ -101,7 +104,7 @@ def dist_generator(particles, emittance, beta, bunch, spread, factor, seed):
 
 
     for e1, e2, e3, e4, e5, e6 in zip(x, xp, y, yp, z, E):
-        f.write('%8.6e %8.6e %8.6e %8.6e %8.6e %8.6e\n' % (e1, e2, e3, e4, e5, e6))
+        f.write('%8.6e %8.6e %8.6e %8.6e %8.6e %8.6e\n' % (e1+orbit[0], e2+orbit[1], e3+orbit[2], e4+orbit[3], e5, e6))
 
     f.close()
 
@@ -126,7 +129,7 @@ else:
     # (particles, emittance, beta, bunch, spread, factor)
     for number in range(1, jobs+1):
         #n = '%s'%number
-        dist_generator(particles, 2.5e-6, 0.15, 75.5, 1.13e-4, SPREAD, number)
+        dist_generator(particles, 2.5e-6, 0.15, 75.5, 1.13e-4, SPREAD, number,orbit=(0.75000000,-0.27077056E-07, -0.93996497E-08, 0.29500000))
 
 
 
