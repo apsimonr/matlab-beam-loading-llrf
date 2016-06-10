@@ -2,6 +2,7 @@
 
 import os
 import math as m
+import numpy as np
 import socket
 
 # Configuration
@@ -59,11 +60,12 @@ class Bunch:
             ps = ("%g "*11 + "%d") % (p[0],p[1], p[2],p[3], p[4], p[5], ejfv, rvv, dpsv, oidpsv, dpsv1, nlostp)
             self.particles_strings.append(ps)
             
-    def get_average_x(self):
-        pass
-
-    def get_average_phase(self):
-        pass
+    def get_average(self,idx):
+        "idx: 0=X, 1=XP, 2=Y, 3=YP, 4=Z, 5=E"
+        X = np.empty(self.get_Nparticles())
+        for i in xrange(self.get_Nparticles()):
+            X[i]=self.particles[i][idx]
+        return np.average(X)
 
     def get_Nparticles(self):
         assert len(self.particles) == len(self.particles_strings)
@@ -115,7 +117,8 @@ for i in xrange(1,Nbunches):
         exit(1)
         
     bunches.append(Bunch.loadParticlesFile(bunchfile_name))
-    print bunches[-1].particles
+    #print bunches[-1].particles
+    print i, map(bunches[-1].get_average, range(6))
 print "Done."
 
 #Open BDEX pipes
@@ -211,31 +214,31 @@ for turn in xrange(Nturns):
             print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
             assert BDEX_readPipe_line == "BDEX TRACKING...\n"
             
-        elif bunchNum == 1:
+        elif bunchNum == 0:
             #Wrap around the bunchNum
-            bunches[-1].loadParticlesBDEX(BDEX_readPipe)
+            bunches[-1] = Bunch.loadParticlesBDEX(BDEX_readPipe)
 
             #Confirm BDEX state OK prepare to write
             BDEX_readPipe_line = BDEX_readPipe.readline()
             print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
             assert BDEX_readPipe_line == "BDEX WAITING...\n"
             
-            bunches[1].writeParticlesBDEX(BDEX_writePipe)
-
+            bunches[0].writeParticlesBDEX(BDEX_writePipe)
             
             #Confirm BDEX state OK and advance pipe
             BDEX_readPipe_line = BDEX_readPipe.readline()
             print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
             assert BDEX_readPipe_line == "BDEX TRACKING...\n"
+            
         else:
-            bunches[-1].loadParticlesBDEX(BDEX_readPipe)
+            bunches[bunchNum-1] = Bunch.loadParticlesBDEX(BDEX_readPipe)
 
             #Confirm BDEX state OK prepare to write
             BDEX_readPipe_line = BDEX_readPipe.readline()
             print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
             assert BDEX_readPipe_line == "BDEX WAITING...\n"
             
-            bunches[1].writeParticlesBDEX(BDEX_writePipe)
+            bunches[bunchNum].writeParticlesBDEX(BDEX_writePipe)
 
             #Confirm BDEX state OK and advance pipe
             BDEX_readPipe_line = BDEX_readPipe.readline()
@@ -243,12 +246,25 @@ for turn in xrange(Nturns):
             assert BDEX_readPipe_line == "BDEX TRACKING...\n"
             
         #Read bunch parameters at cavity from SixTrack
-        # TODO
-        x_mean   = 0.0001 #[m]
-        phi_mean = 2      #[deg]
+        tempBunch = Bunch.loadParticlesBDEX(BDEX_readPipe)
+
+        #Confirm BDEX state OK prepare to write
+        BDEX_readPipe_line = BDEX_readPipe.readline()
+        print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
+        assert BDEX_readPipe_line == "BDEX WAITING...\n"
+        #Keep particle distribution
+        BDEX_writePipe.write("-1\n")
+        BDEX_writePipe.flush()
+        #Confirm BDEX state OK and advance pipe
+        BDEX_readPipe_line = BDEX_readPipe.readline()
+        print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
+        assert BDEX_readPipe_line == "BDEX TRACKING...\n"
+        
+        y_mean   = tempBunch.get_average(2)*1e-3                     #[m] # 0.0001 #[m]
+        phi_mean = tempBunch.get_average(2)/3e8*LLRF_fcav*360.0      #[deg]
 
         #Send bunch parameters at cavity to LLRFsim
-        LLRFsim_socket.send("bunchnum %d %d %g %g\n" % (bunchNum+1, turn+1, x_mean, phi_mean) )
+        LLRFsim_socket.send("bunchnum %d %d %g %g\n" % (bunchNum+1, turn+1, y_mean, phi_mean) )
 
 #Close connections
 BDEX_readPipe_line = BDEX_readPipe.read()
