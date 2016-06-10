@@ -6,7 +6,7 @@ clc;
 VT = 3e6;
 bcnt = 1;
 tcnt = 1;
-nturns = 40;
+nturns = 20;
 phi0 = 90;
 RQ = 150;
 qbunch = 18.4e-9;
