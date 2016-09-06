@@ -1,4 +1,4 @@
-function [Vcav] = RKcav(Q0, Qe, f0, df, tinterval, Pin0, dPin0, d2Pin0, Vinit, bphi, dV, phi0)
+function Vcav = RKcav(Q0, Qe, f0, dfint, tinterval, Pin0, dPin0, d2Pin0, Vinit, bphi, dV, phi0, Kl, df, Vtarget)
 %% Parameter definitions
 %%-------------------------------------------------------------------------
 % Q0: Q0 of the cavity
@@ -32,13 +32,13 @@ nsteps = round(abs(tinterval(2) - tinterval(1))/dt) + 1;
 
 Vcav = zeros(1,nsteps);
 
-if length(df) == 1
-    w = 2*pi*df*ones(size(QL)) + w0;
-elseif length(df) == length(QL)
-    w = 2*pi*df + w0;
+if length(dfint) == 1
+    w = 2*pi*dfint*ones(size(QL)) + w0 + 2*pi*df;
+elseif length(dfint) == length(QL)
+    w = 2*pi*dfint + w0 + 2*pi*df;
 else
     disp('WARNING: length of frequency should be 1 or nsteps');
-    w = 2*pi*df(1)*ones(size(QL)) + w0;
+    w = 2*pi*dfint(1)*ones(size(QL)) + w0 + 2*pi*df;
 end
 
 dw = diff(w)/dt;
@@ -49,10 +49,11 @@ Ai_dot = @(p, dp, wi, a, Qet, QLt) w0*((imag(p) + real(dp)/wi)/Qet - (1 + w0^2/w
 
 for i = 0:nsteps - 1
     if i == 0
+        
         ptemp = Pin0(i+1);
         dptemp = dPin0(i+1);
-        wtemp = w(i+1);
         atemp = Vinit;
+        wtemp = w(i+1) - Kl*(abs(atemp)^2 - abs(Vtarget)^2)/1e12;
         Qetemp = Qe(i+1);
         QLtemp = QL(i+1);
         k0 = dt*Ar_dot(ptemp, dptemp, wtemp, atemp, Qetemp, QLtemp);
@@ -60,8 +61,8 @@ for i = 0:nsteps - 1
         
         ptemp = Pin0(i+1) + dPin0(i+1)*dt/2;
         dptemp = dPin0(i+1) + d2Pin0(i+1)*dt/2;
-        wtemp = w(i+1) + dw(i+1)*dt/2;
         atemp = Vinit + (k0 + 1i*L0)/2;
+        wtemp = w(i+1) + dw(i+1)*dt/2 - Kl*(abs(atemp)^2 - abs(Vtarget)^2)/1e12;
         Qetemp = Qe(i+1) + diff(Qe(i+1:i+2))/2;
         QLtemp = QL(i+1) + diff(QL(i+1:i+2))/2;
         k1 = dt*Ar_dot(ptemp, dptemp, wtemp, atemp, Qetemp, QLtemp);
@@ -69,8 +70,8 @@ for i = 0:nsteps - 1
         
         ptemp = Pin0(i+1) + dPin0(i+1)*dt/2;
         dptemp = Pin0(i+1) + d2Pin0(i+1)*dt/2;
-        wtemp = w(i+1) + dw(i+1)*dt/2;
         atemp = Vinit + (k1 + 1i*L1)/2;
+        wtemp = w(i+1) + dw(i+1)*dt/2 - Kl*(abs(atemp)^2 - abs(Vtarget)^2)/1e12;
         Qetemp = Qe(i+1) + diff(Qe(i+1:i+2))/2;
         QLtemp = QL(i+1) + diff(QL(i+1:i+2))/2;
         k2 = dt*Ar_dot(ptemp, dptemp, wtemp, atemp, Qetemp, QLtemp);
@@ -78,8 +79,8 @@ for i = 0:nsteps - 1
         
         ptemp = Pin0(i+2);
         dptemp = dPin0(i+2);
-        wtemp = w(i+2);
         atemp = Vinit + k2 + 1i*L2;
+        wtemp = w(i+2) - Kl*(abs(atemp)^2 - abs(Vtarget)^2)/1e12;
         Qetemp = Qe(i+2);
         QLtemp = QL(i+2);
         k3 = dt*Ar_dot(ptemp, dptemp, wtemp, atemp, Qetemp, QLtemp);
@@ -87,10 +88,11 @@ for i = 0:nsteps - 1
         
         Vcav(i+1) = Vinit + ((k0 + 2*k1 + 2*k2 + k3) + 1i*(L0 + 2*L1 + 2*L2 + L3))/6 + dV*exp(1i*(bphi + phi0)*pi/180);
     else
+        
         ptemp = Pin0(i+1);
         dptemp = dPin0(i+1);
-        wtemp = w(i+1);
         atemp = Vcav(i);
+        wtemp = w(i+1) - Kl*(abs(atemp)^2 - abs(Vtarget)^2)/1e12;
         Qetemp = Qe(i+1);
         QLtemp = QL(i+1);
         k0 = dt*Ar_dot(ptemp, dptemp, wtemp, atemp, Qetemp, QLtemp);
@@ -98,8 +100,8 @@ for i = 0:nsteps - 1
         
         ptemp = Pin0(i+1) + dPin0(i+1)*dt/2;
         dptemp = dPin0(i+1) + d2Pin0(i+1)*dt/2;
-        wtemp = w(i+1) + dw(i+1)*dt/2;
         atemp = Vcav(i) + (k0 + 1i*L0)/2;
+        wtemp = w(i+1) + dw(i+1)*dt/2 - Kl*(abs(atemp)^2 - abs(Vtarget)^2)/1e12;
         Qetemp = Qe(i+1) + diff(Qe(i+1:i+2))/2;
         QLtemp = QL(i+1) + diff(QL(i+1:i+2))/2;
         k1 = dt*Ar_dot(ptemp, dptemp, wtemp, atemp, Qetemp, QLtemp);
@@ -107,8 +109,8 @@ for i = 0:nsteps - 1
         
         ptemp = Pin0(i+1) + dPin0(i+1)*dt/2;
         dptemp = dPin0(i+1) + d2Pin0(i+1)*dt/2;
-        wtemp = w(i+1) + dw(i+1)*dt/2;
         atemp = Vcav(i) + (k1 + 1i*L1)/2;
+        wtemp = w(i+1) + dw(i+1)*dt/2 - Kl*(abs(atemp)^2 - abs(Vtarget)^2)/1e12;
         Qetemp = Qe(i+1) + diff(Qe(i+1:i+2))/2;
         QLtemp = QL(i+1) + diff(QL(i+1:i+2))/2;
         k2 = dt*Ar_dot(ptemp, dptemp, wtemp, atemp, Qetemp, QLtemp);
@@ -116,8 +118,8 @@ for i = 0:nsteps - 1
         
         ptemp = Pin0(i+2);
         dptemp = dPin0(i+2);
-        wtemp = w(i+2);
         atemp = Vcav(i) + k2 + 1i*L2;
+        wtemp = w(i+2) - Kl*(abs(atemp)^2 - abs(Vtarget)^2)/1e12;
         Qetemp = Qe(i+2);
         QLtemp = QL(i+2);
         k3 = dt*Ar_dot(ptemp, dptemp, wtemp, atemp, Qetemp, QLtemp);

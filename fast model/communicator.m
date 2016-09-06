@@ -1,7 +1,5 @@
 function [xpos, bphi] = communicator(hostname, portnum, outbuffersize, inbuffersize, connect, dataout)
 
-persistent tcpport
-
 if connect == 1
     tcpport = tcpip(hostname, portnum, 'NetworkRole', 'server');
     tcpport.OutputBufferSize = outbuffersize;

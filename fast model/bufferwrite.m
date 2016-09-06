@@ -1,9 +1,12 @@
-function[LHCtrain, Pold0, Vout, Vtarget, vold, dvold, inputP, trev] = bufferwrite(VT, f0, Q0, Qe, phi0, tlat, ci)
+function[LHCtrain, Pold0, Vout, Vtarget, vold, dvold, inputP, trev, qflag] = bufferwrite(VT, f0, Q0, Qe, phi0, tlat, ci, dV, bphi)
 
-[trev, LHCtrain] = LHCbunchTrain(1);
+[trev, LHCtrain, tabort, qflag] = LHCbunchTrain(1, tlat, f0);
 
-tabort = trev - LHCtrain(end);
-Pamp = (Q0 + Qe)/(2*Q0)*VT*exp(1i*phi0*pi/180);
+QL = 1/(1/Q0 + 1/Qe);
+dVcomp = dV*exp(1i*(bphi + phi0)*pi/180);
+theta = 2*pi*f0*trev/length(LHCtrain)*(Q0 + Qe)/(2*Q0*Qe);
+
+Pamp = Qe/(2*QL)*VT*exp(1i*phi0*pi/180) + Qe/(2*QL)*dVcomp/(1 - exp(theta));
 nsteps = round((tlat + tabort)*f0);
 inputP = Pamp*ones(1,nsteps + 3);
 Vout = VT*exp(1i*phi0*pi/180);

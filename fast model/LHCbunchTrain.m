@@ -1,4 +1,4 @@
-function [trev, LHCtrain] = LHCbunchTrain(ver)
+function [trev, LHCtrain, tabort, qflag] = LHCbunchTrain(ver, tlat, f0)
 %%-------------------------------------------------------------------------
 % ver: an integer to allow for other potential bunch train structures
 %%-------------------------------------------------------------------------
@@ -99,7 +99,49 @@ if ver == 1
     
     trev = LHCtrain(end) + LHCspace + bspace;
     
-    save('LHCBunchTrain.mat','LHCtrain','trev');
+    tabort = trev - LHCtrain(end);
+    
+    if round(tabort*f0) > round(tlat*f0)
+        nextra = ceil(round(tabort*f0)/(f0*tlat));
+        
+        LHCtraintemp = zeros(1,length(LHCtrain) + nextra - 1);
+        LHCtraintemp(1:length(LHCtrain)) = LHCtrain;
+        
+        qflag = ones(1,length(LHCtrain) + nextra - 1);
+        qflag(length(LHCtrain) + 1:end) = 0;
+        
+        for i = 1:nextra - 1
+            LHCtraintemp(length(LHCtrain) + i) = LHCtrain(end) + i*tlat;
+        end
+        
+        LHCtrain = LHCtraintemp;
+    else
+        qflag = ones(size(LHCtrain));
+    end
+    
+    for i = 1:length(LHCtrain) - 1
+        tspace = LHCtrain(i + 1) - LHCtrain(i);
+        if round(tspace*f0) > round(tlat*f0)
+            nextra = ceil(round(tspace*f0)/(f0*tlat));
+            
+            qflagtemp = zeros(1,length(qflag) + nextra - 1);
+            qflagtemp(1:i) = qflag(1:i);
+            qflagtemp(i + nextra - 1:end) = qflag(i + 1:end);
+            
+            LHCtraintemp = zeros(1,length(LHCtrain) + nextra - 1);
+            LHCtraintemp(1:i) = LHCtrain(1:i);
+            LHCtraintemp(i + nextra - 1:end) = LHCtrain(i + 1:end);
+            
+            for j = 1:nextra - 1
+                LHCtraintemp(i+j) = LHCtrain(i) + j*tlat;
+            end
+            
+            LHCtrain = LHCtraintemp;
+            qflag = qflagtemp;
+        end
+    end
+    
+    %     save('LHCBunchTrain.mat','LHCtrain','trev');
 else
     return
 end
