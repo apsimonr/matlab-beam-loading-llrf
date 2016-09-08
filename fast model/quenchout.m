@@ -14,5 +14,6 @@ end
 
 Qeint = Qe*ones(size(Q0int));
 QL = 1./(1./Qeint + 1./Q0int);
-dfint = f0*sqrt(1 - 1./QL.^2) - f0;
+QLsc = 1/(1/Qe + 1/Q0);
+dfint = f0*sqrt(1 - 1./(4*QL.^2))/sqrt(1 - 1/(4*QLsc^2)) - f0;
 end
