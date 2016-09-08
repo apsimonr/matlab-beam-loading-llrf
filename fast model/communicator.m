@@ -1,5 +1,7 @@
 function [xpos, bphi, qout] = communicator(hostname, portnum, outbuffersize, inbuffersize, connect, dataout, LHCtrain, qflag)
 
+persistent tcpport
+
 if connect == 1
     tcpport = tcpip(hostname, portnum, 'NetworkRole', 'server');
     tcpport.OutputBufferSize = outbuffersize;
@@ -13,10 +15,10 @@ if length(LHCtrain) > 1
     % "bunch times: length = " <length(LHCtrain)>
     % for-loop values
     % "end of bunch time data"
-    fwrite(tcpport,sprintf('%s %i\n', 'bunch info', length(LHCtrain)));
+    fwrite(tcpport,sprintf('%s %i\n', 'bunchinfo', length(LHCtrain)));
     
     for i = 1 : length(LHCtrain)
-        fwrite(tcpport,sprintf('%12.10g %12.10g\n', LHCtrain(i), qflag(i)));
+        fwrite(tcpport,sprintf('%12.10g %i\n', LHCtrain(i), qflag(i)));
     end
     fwrite(tcpport,sprintf('%s\n', 'end of bunch info'));
 end

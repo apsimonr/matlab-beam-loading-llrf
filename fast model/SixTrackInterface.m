@@ -34,7 +34,7 @@ qoutput = qbunch*(1 + qjit*randn(size(qflag)));
 
 bcnt = 1;
 tcnt = 1;
-nturns = 40;
+nturns = 2;
 delfiles = 0;
 
 %% delete parameter files if required
@@ -57,13 +57,14 @@ outbuffersize = 512;
 inbuffersize = 512;
 connect = 1;
 
+%% Run for bunch 1, turn 1
 dataout = [VT, phi0, fcav];
 [xout, bphiout, qout] = communicator(hostname, portnum, outbuffersize, inbuffersize, connect, dataout, LHCtrain, qflag);
 
 %% run for other bunches
 for i = 1:length(qflag)*nturns - 1
 %     [bcntout, tcntout, Vcav, fout, ~] = BLmaster(VT, bphiout, xout, bcnt, tcnt, phi0, RQ, qbunch, quench);
-    [bcntout, tcntout, Vcav, fout, ~, ~, ~, ~, ~] = BLmaster(VT, bphiout, xout, bcnt, tcnt, phi0, RQ, qbunch*qout, quench, llRFoff, LHe_temp, rfoff_flag);
+    [bcntout, tcntout, Vcav, fout, ~, ~, ~, ~, ~] = BLmaster(VT, bphiout, xout, bcnt, tcnt, phi0, RQ, qbunch*qout, quench, llrfoff, LHe_temp, rfoff_flag);
     
     if tcnt ~= tcntout
         disp(tcntout);
@@ -76,7 +77,7 @@ for i = 1:length(qflag)*nturns - 1
     bcnt = bcntout;
     tcnt = tcntout;
     
-    if i < 2808*nturns - 1
+    if i < length(qflag)*nturns - 1
         connect = 0;
         dataout = [abs(Vcav(end)), phase(Vcav(end)) - 90, fout(end)];
         [xout, bphiout, qout] = communicator(hostname, portnum, outbuffersize, inbuffersize, connect, dataout, 0, 0);
