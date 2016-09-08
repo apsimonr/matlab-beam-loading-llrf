@@ -8,6 +8,7 @@ import socket
 # Configuration
 Nturns = 20
 Nbunches = 2808
+#Nbunches = 10
 
 BDEX_writePipe_name = "/tmp/BDEX1" #For writing particles to SixTrack
 BDEX_readPipe_name = "/tmp/BDEX2"  #For reading particles from SixTrack
@@ -16,7 +17,7 @@ DYNK_writePipe_name = "/tmp/DYNK1" #For writing element attributes to SixTrack
 DYNK_readPipe_name =  "/tmp/DYNK2" #For selecting which element attributes to write to SixTrack
 
 
-LLRFsim_online = True
+LLRFsim_online = False #True
 
 LLRFsim_host = "127.0.0.1"
 LLRFsim_port = 4012
@@ -87,7 +88,7 @@ class Bunch:
     @classmethod
     def loadParticlesBDEX(cls, pipe):
         rl = pipe.readline()
-        assert rl.startswith("BDEX TURN")
+        assert rl.startswith("BDEX TURN"),"rl = '"+rl+"'"
         ls = rl.split()
         turn = int(ls[2])
         bez  = ls[3][4:]
@@ -109,7 +110,7 @@ class Bunch:
 
 # Initialize bunches array
 print "Reading initial distributions..."
-for i in xrange(1,Nbunches):
+for i in xrange(1,Nbunches+1): #Counting from 1, ending on Nbunches.
     bunchfile_name = os.path.join("distributions","init_dist_"+str(i)+".txt")
     if not os.path.isfile(bunchfile_name):
         print "Error when loading bunch",i
@@ -128,7 +129,8 @@ print "Opening", BDEX_readPipe_name, "for reading"
 BDEX_readPipe = open(BDEX_readPipe_name,'r')
 BDEX_readPipe_line = BDEX_readPipe.readline()
 print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
-assert BDEX_readPipe_line == "BDEX-PIPE !******************!\n"
+assert BDEX_readPipe_line == "BDEX-PIPE !******************!\n", \
+    "BDEX_readPipe_line='"+BDEX_readPipe_line+"'"
 
 #Open PIPEFUN pipes
 print "Opening", DYNK_writePipe_name, "for writing"
@@ -138,7 +140,8 @@ DYNK_readPipe = open(DYNK_readPipe_name,'r')
 
 DYNK_readPipe_line = DYNK_readPipe.readline()
 print "DYNK_readPipe_line: '" + DYNK_readPipe_line[:-1] + "'"
-assert DYNK_readPipe_line == "DYNKPIPE !******************!\n"
+assert DYNK_readPipe_line == "DYNKPIPE !******************!\n",\
+    "DYNK_readPipe_line='"+DYNK_readPipe_line+"'"
 DYNK_readPipe_line = DYNK_readPipe.readline()
 print "DYNK_readPipe_line: '" + DYNK_readPipe_line[:-1] + "'"
 assert DYNK_readPipe_line == "INIT ID=AR1_V for FUN=pipe_V1\n"
@@ -199,8 +202,8 @@ for turn in xrange(Nturns):
             #Discard inital bunch
             print "loading initial bunch"
             bunch_discard = Bunch.loadParticlesBDEX(BDEX_readPipe)
-            print "Discarded bunch:",  bunch_discard
-
+            print "Discarded bunch:", map(bunch_discard.get_average, range(6))
+            
             #Confirm BDEX state OK prepare to write
             BDEX_readPipe_line = BDEX_readPipe.readline()
             print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
@@ -208,7 +211,7 @@ for turn in xrange(Nturns):
             
             #Write bunch 1 to SixTrack
             bunches[bunchNum].writeParticlesBDEX(BDEX_writePipe)
-
+            
             #Confirm BDEX state OK and advance pipe
             BDEX_readPipe_line = BDEX_readPipe.readline()
             print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
@@ -217,6 +220,7 @@ for turn in xrange(Nturns):
         elif bunchNum == 0:
             #Wrap around the bunchNum
             bunches[-1] = Bunch.loadParticlesBDEX(BDEX_readPipe)
+            print "Old bunch 0:", map(bunches[-1].get_average, range(6))
 
             #Confirm BDEX state OK prepare to write
             BDEX_readPipe_line = BDEX_readPipe.readline()
@@ -232,11 +236,13 @@ for turn in xrange(Nturns):
             
         else:
             bunches[bunchNum-1] = Bunch.loadParticlesBDEX(BDEX_readPipe)
-
+            print "Old bunch", bunchNum-1,":", map(bunches[bunchNum-1].get_average, range(6))
+            
             #Confirm BDEX state OK prepare to write
             BDEX_readPipe_line = BDEX_readPipe.readline()
             print "BDEX_readPipe_line: '"+BDEX_readPipe_line[:-1]+"'"
-            assert BDEX_readPipe_line == "BDEX WAITING...\n"
+            assert BDEX_readPipe_line == "BDEX WAITING...\n",\
+                "BDEX_readPipe_line='"+BDEX_readPipe_line+"'"
             
             bunches[bunchNum].writeParticlesBDEX(BDEX_writePipe)
 
@@ -264,7 +270,8 @@ for turn in xrange(Nturns):
         phi_mean = tempBunch.get_average(2)/3e8*LLRF_fcav*360.0      #[deg]
 
         #Send bunch parameters at cavity to LLRFsim
-        LLRFsim_socket.send("bunchnum %d %d %g %g\n" % (bunchNum+1, turn+1, y_mean, phi_mean) )
+        if LLRFsim_online:
+            LLRFsim_socket.send("bunchnum %d %d %g %g\n" % (bunchNum+1, turn+1, y_mean, phi_mean) )
 
 #Close connections
 BDEX_readPipe_line = BDEX_readPipe.read()

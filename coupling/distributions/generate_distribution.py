@@ -114,7 +114,7 @@ if len(sys.argv) != 3:
     exit(1)
 
 particles = int(sys.argv[1])
-SPREAD = 1.8
+SPREAD = 1.8 # beam distribution width multiplier
 #print sys.argv
 if sys.argv[2][0] == "@":
     seed = int(sys.argv[2][1:])
@@ -129,7 +129,7 @@ else:
     # (particles, emittance, beta, bunch, spread, factor)
     for number in range(1, jobs+1):
         #n = '%s'%number
-        dist_generator(particles, 2.5e-6, 0.15, 75.5, 1.13e-4, SPREAD, number,orbit=(0.75000000,-0.27077056E-07, -0.93996497E-08, 0.29500000))
+        dist_generator(particles, 2.5e-6, 0.15, 75.5, 1.13e-4, SPREAD, number,orbit=(-0.75000000,-0.27077056E-07, -0.93996497E-08, 0.29500000))
 
 
 
