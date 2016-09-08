@@ -21,7 +21,7 @@ if strcmp(filename, 'cavParam')
         prompt{3} = 'Resonant frequency (MHz)';
         prompt{4} = 'Frequency offset (MHz)';
         prompt{5} = 'Lorentz detuning factor (Hz/(MV/m)^2)';
-        answers = inputdlg(prompt,'Cavity parameters needed',1,{'1e9','3e6','400','0','100'});
+        answers = inputdlg(prompt,'Cavity parameters needed',1,{'1e9','5e5','400','0','200'});
         
         Q0 = str2double(answers{1});
         Qe = str2double(answers{2});
@@ -49,24 +49,22 @@ elseif strcmp(filename, 'LLRFParam')
         prompt = {};
         prompt{1} = 'Latency (ns)';
         prompt{2} = 'Digital refresh time (ns)';
-        prompt{3} = 'LPF factor [0-1]';
-        prompt{4} = 'Proportional controller relative gain';
-        prompt{5} = 'Integral controller relative gain';
-        prompt{6} = 'Amplifier Q-factor';
-        prompt{7} = 'Maximum RF Voltage [MV]';
-        prompt{8} = 'Fractional measurement noise [%]';
-        answers = inputdlg(prompt,'Cavity parameters needed',1,{'1000', '1000', '0.1', '181.8','2.08e-5','80','10', '0.5'});
+        prompt{3} = 'Proportional controller relative gain';
+        prompt{4} = 'Integral controller relative gain';
+        prompt{5} = 'Amplifier Q-factor';
+        prompt{6} = 'Maximum klystron power [kW]';
+        prompt{7} = 'signal to noise ratio';
+        answers = inputdlg(prompt,'Cavity parameters needed',1,{'1000', '25', '30.3','3.47e-6','400','80', '1000'});
         
         tlat = str2double(answers{1})*1e-9;
         dlat = str2double(answers{2})*1e-9;
-        lpff = str2double(answers{3});
-        cp = str2double(answers{4}) + 1i*str2double(answers{4});
-        ci = str2double(answers{5}) + 1i*str2double(answers{5});
-        Qa = str2double(answers{6});
-        Pmax = str2double(answers{7})*1e6;
-        noiseamp = str2double(answers{8})/100;
+        cp = str2double(answers{3})*(1 + 1i);
+        ci = str2double(answers{4})*(1 + 1i);
+        Qa = str2double(answers{5});
+        Pmax = str2double(answers{6})*1e3;
+        noiseamp = str2double(answers{7});
         
-        output = {tlat, dlat, lpff, cp, ci, Qa, Pmax, noiseamp};
+        output = {tlat, dlat, cp, ci, Qa, Pmax, noiseamp};
     end
 end
 end

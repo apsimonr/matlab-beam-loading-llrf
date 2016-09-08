@@ -1,4 +1,4 @@
-function [voldout, dvoldout, Vamp, Pin0] = LLRF(Vcav, Vtarget, lpff, vold, dvold, f0, cp, ci, Qa, delV, Pmax, Pold0, dlat, noiseamp, rfoff, llrfoff)
+function [dvoldout, Vamp, Pin0] = LLRF(Vcav, Vtarget, dvold, f0, cp, ci, Qa, delV, Pmax, Pold0, dlat, sig2noise, rfoff, llrfoff)
 
 persistent inddlat Pinout1 Pinout2
 
@@ -24,12 +24,8 @@ Pin0(1) = Pinout1;
 %%-------------------------------------------------------------------------
 % Digital LPF on I and Q measurements
 %%-------------------------------------------------------------------------
-
-Vlpf = lpfilter(Vcav, lpff, vold);
-
-VI = real(Vlpf).*(1 + noiseamp*randn(size(Vlpf))) + 200*randn(size(Vlpf));
-VQ = imag(Vlpf).*(1 + noiseamp*randn(size(Vlpf))) + 200*randn(size(Vlpf));
-voldout = Vlpf(end)*(1 + noiseamp*randn(1,1));
+VI = real(Vcav) + abs(Vtarget)/sig2noise*randn(size(Vcav));
+VQ = imag(Vcav) + abs(Vtarget)/sig2noise*randn(size(Vcav));
 
 %%-------------------------------------------------------------------------
 % Calculate changes to klystron power to correct for beam loading
@@ -51,15 +47,18 @@ for i = 1:length(Vcav)
     dvold = Idv + 1i*Qdv + dvold;
     
     temp = real(cp)*Idv + real(ci)*real(dvold) + 1i*(imag(cp)*Qdv + imag(ci)*imag(dvold));
-    mag = abs(temp);
-    phi = phase(temp);
-    if mag > Pmax(i)
-        PI(i) = Pmax(i)*cos(phi);
-        PQ(i) = Pmax(i)*sin(phi);
-    else
-        PI(i) = real(temp);
-        PQ(i) = imag(temp);
-    end
+    PI(i) = real(temp);
+    PQ(i) = imag(temp);
+    
+%     mag = abs(temp);
+%     phi = phase(temp);
+%     if mag > Pmax
+%         PI(i) = Pmax*cos(phi);
+%         PQ(i) = Pmax*sin(phi);
+%     else
+%         PI(i) = real(temp);
+%         PQ(i) = imag(temp);
+%     end
     
     if inddlat == ndlat
         Pinout2 = PI(i) + 1i*PQ(i);
@@ -75,3 +74,10 @@ end
 dvoldout = dvold;
 
 Vamp = RKamp(Qa, f0, Pin0, delV, Pold0);
+
+for i = 1:length(Vamp)
+    if abs(Vamp(i)) > Pmax
+        Vamp(i) = Pmax*Vamp(i)/abs(Vamp(i));
+    end
+end
+        

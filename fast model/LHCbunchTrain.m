@@ -140,8 +140,6 @@ if ver == 1
             qflag = qflagtemp;
         end
     end
-    
-    %     save('LHCBunchTrain.mat','LHCtrain','trev');
 else
     return
 end

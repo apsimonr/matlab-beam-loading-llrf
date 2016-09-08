@@ -1,4 +1,4 @@
-function [bcntout, tcntout, Vcav, fout, Vamp, Pinout, quenchtime, fnom, dfq] = BLmaster(VT, bphi, xbunch, bcnt, tcnt, phi0, RQ, qbunch, quench, llrfoff)
+function [bcntout, tcntout, Vcav, fout, Vamp, Pinout, quenchtime, fnom, dfq] = BLmaster(VT, bphi, xbunch, bcnt, tcnt, phi0, RQ, qbunch, quench, llrfoff, LHe_temp, rfoff_flag)
 %% Parameter definitions
 %%-------------------------------------------------------------------------
 % VT: initial transverse voltage in the cavity [V]
@@ -26,10 +26,10 @@ function [bcntout, tcntout, Vcav, fout, Vamp, Pinout, quenchtime, fnom, dfq] = B
 %      warning: debug mode outputs all data for all rf timesteps and will
 %      be significantly slower
 %%-------------------------------------------------------------------------
-persistent LHCtrain Pold0 Vout Vtarget vold dvold inputP trev qflag
+persistent LHCtrain Pold0 Vout Vtarget dvold inputP trev qflag
 persistent tq Q0nc ttran trfoff
 persistent Q0 Qe f0 df Kl
-persistent tlat dlat lpff cp ci Qa Pmax noiseamp
+persistent tlat dlat cp ci Qa Pmax noiseamp
 
 %%-------------------------------------------------------------------------
 % Create and read in cavity and LLRF parameter files
@@ -48,12 +48,11 @@ if isempty(tlat)
     output = paramwrite('LLRFParam');
     tlat = output{1};
     dlat = output{2};
-    lpff = output{3};
-    cp = output{4};
-    ci = output{5};
-    Qa = output{6};
-    Pmax = output{7};
-    noiseamp = output{8};
+    cp = output{3};
+    ci = output{4};
+    Qa = output{5};
+    Pmax = sqrt(2*output{6}*RQ*Qe);
+    noiseamp = output{7};
 end
 
 %%-------------------------------------------------------------------------
@@ -64,7 +63,7 @@ c = 299792458;
 dV = xbunch*(2*pi*f0)^2/(2*c)*RQ*qbunch;
 
 if bcnt == 1 && tcnt == 1
-    [LHCtrain, Pold0, Vout, Vtarget, vold, dvold, inputP, trev, qflag] = bufferwrite(VT, f0, Q0, Qe, phi0, tlat, ci, dV, bphi);
+    [LHCtrain, Pold0, Vout, Vtarget, dvold, inputP, trev, qflag] = bufferwrite(VT, f0, Q0, Qe, phi0, tlat, ci, dV, bphi);
 end
 
 %%-------------------------------------------------------------------------
@@ -75,15 +74,15 @@ if bcnt == 1 && tcnt == 1
     if quench == 1
         if isempty(tq)
             prompt = {};
-            prompt{1} = 'Time of quench (ns)';
+            prompt{1} = 'Time of quench (us)';
             prompt{2} = 'Normal conducting Q0';
-            prompt{3} = 'Transition decay time (ns)';
+            prompt{3} = 'Transition decay time (us)';
             prompt{4} = 'Time of RF off (us)';
-            answers = inputdlg(prompt,'Quench parameters needed',1,{'1000','1e3','1e5','700'});
+            answers = inputdlg(prompt,'Quench parameters needed',1,{'200','1e3','10','250'});
             
-            tq = str2double(answers{1})*1e-9;
+            tq = str2double(answers{1})*1e-6;
             Q0nc = str2double(answers{2});
-            ttran = str2double(answers{3})*1e-9;
+            ttran = str2double(answers{3})*1e-6;
             trfoff = str2double(answers{4})*1e-6;
         end
     elseif quench == 0
@@ -117,25 +116,39 @@ ttemp = tinterval(1) - 1/f0:1/f0:tinterval(2);
 dfq = df*ones(1,length(ttemp));
 
 if trfoff <= tinterval(1)
-    Pmaxin = exp(-2*pi*f0*(ttemp - trfoff)/(2*Qa));
-    rfoff = ones(size(ttemp));
-%     dfq = dfq + 4000;
-    dfq = dfq + 100;
+    if rfoff_flag == 1
+        Pmaxin = exp(-2*pi*f0*(ttemp - trfoff)/(2*Qa));
+        rfoff = ones(size(ttemp));
+    else
+        Pmaxin = ones(size(ttemp));
+        rfoff = zeros(size(ttemp));
+    end
+    
+    if LHe_temp <= 2.17
+        dfq = dfq + 100;
+    else
+        dfq = dfq + 4000;
+    end
 elseif trfoff <= tinterval(2)
-    Pmaxin = zeros(size(ttemp));
-    rfoff = zeros(size(ttemp));
     [~, tindex] = min(abs(ttemp - trfoff));
-    Pmaxin(1:tindex - 1) = 1;
-    Pmaxin(tindex:end) = exp(-2*pi*f0*(ttemp(tindex:end) - trfoff)/(2*Qa));
-    rfoff(tindex:end) = 1;
-%     dfq(tindex:end) = dfq + 4000;
-    dfq(tindex:end) = dfq + 100;
+    
+    if rfoff_flag == 1
+        Pmaxin(tindex:end) = exp(-2*pi*f0*(ttemp(tindex:end) - trfoff)/(2*Qa));
+        rfoff(tindex:end) = 1;
+    else
+        Pmaxin = ones(size(ttemp));
+        rfoff = zeros(size(ttemp));
+    end
+    
+    if LHe_temp <= 2.17
+        dfq = dfq + 100;
+    else
+        dfq = dfq + 4000;
+    end
 else
     Pmaxin = ones(size(ttemp));
     rfoff = zeros(size(ttemp));
 end
-
-rfoff = rfoff(2:end);
 
 Vcav = RKcav(Q0int, Qeint, f0, dfint, tinterval, Pin.*Pmaxin, dPin0, d2Pin0, Vinit, bphi, dV*qflag(bcnt), phi0, Kl, dfq, Vtarget);
 
@@ -153,7 +166,7 @@ end
 
 delV = LLRFinputs(Vout, f0);
 
-[vold, dvold, Vamp, Pinout] = LLRF(Vcav, Vtarget, lpff, vold, dvold, f0, cp, ci, Qa, delV, Pmax*ones(size(Pmaxin)), Pold0, dlat, noiseamp, rfoff, llrfoff);
+[dvold, Vamp, Pinout] = LLRF(Vcav, Vtarget, dvold, f0, cp, ci, Qa, delV, Pmax, Pold0, dlat, noiseamp, rfoff, llrfoff);
 
 [Pold0, Vout, inputP] = bufferout(Vamp, Vcav, inputP);
 

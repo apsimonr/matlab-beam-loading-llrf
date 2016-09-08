@@ -310,3 +310,76 @@ title('HL-LHC cavity, LHe at 2K');
 legend('RF off, BL on (nominal)', 'RF on, BL on', 'RF off, BL off', 'RF on, BL off');
 xlabel('time [ms]');
 ylabel('frequency shift [Hz]');
+
+% Vamp components
+phase_KEK_4K_amp = mod(phase(Vamp_KEK_4K)*180/pi+90,360) - 180;
+phase_KEK_2K_amp = mod(phase(Vamp_KEK_2K)*180/pi+90,360) - 180;
+phase_LHC_4K_amp = mod(phase(Vamp_LHC_4K)*180/pi+90,360) - 180;
+phase_LHC_2K_amp = mod(phase(Vamp_LHC_2K)*180/pi+90,360) - 180;
+
+phase_KEK_4K_RFon_amp = mod(phase(Vamp_KEK_4K_RFon)*180/pi+90,360) - 180;
+phase_KEK_2K_RFon_amp = mod(phase(Vamp_KEK_2K_RFon)*180/pi+90,360) - 180;
+phase_LHC_4K_RFon_amp = mod(phase(Vamp_LHC_4K_RFon)*180/pi+90,360) - 180;
+phase_LHC_2K_RFon_amp = mod(phase(Vamp_LHC_2K_RFon)*180/pi+90,360) - 180;
+
+phase_KEK_4K_BLoff_amp = mod(phase(Vamp_KEK_4K_BLoff)*180/pi+90,360) - 180;
+phase_KEK_2K_BLoff_amp = mod(phase(Vamp_KEK_2K_BLoff)*180/pi+90,360) - 180;
+phase_LHC_4K_BLoff_amp = mod(phase(Vamp_LHC_4K_BLoff)*180/pi+90,360) - 180;
+phase_LHC_2K_BLoff_amp = mod(phase(Vamp_LHC_2K_BLoff)*180/pi+90,360) - 180;
+
+phase_KEK_4K_BLoff_RFon_amp = mod(phase(Vamp_KEK_4K_BLoff_RFon)*180/pi+90,360) - 180;
+phase_KEK_2K_BLoff_RFon_amp = mod(phase(Vamp_KEK_2K_BLoff_RFon)*180/pi+90,360) - 180;
+phase_LHC_4K_BLoff_RFon_amp = mod(phase(Vamp_LHC_4K_BLoff_RFon)*180/pi+90,360) - 180;
+phase_LHC_2K_BLoff_RFon_amp = mod(phase(Vamp_LHC_2K_BLoff_RFon)*180/pi+90,360) - 180;
+
+figure();
+subplot(2,2,1);
+plot(time,abs(Vamp_KEK_4K).^2/(800*3e6)/1e3,'-b',time,abs(Vamp_KEK_4K_RFon).^2/(800*3e6)/1e3,'-r',time,abs(Vamp_KEK_4K_BLoff).^2/(800*3e6)/1e3,'-g',time,abs(Vamp_KEK_4K_BLoff_RFon).^2/(800*3e6)/1e3,'-k');
+title('KEKB cavity, LHe at 4K');
+legend('RF off, BL on (nominal)', 'RF on, BL on', 'RF off, BL off', 'RF on, BL off');
+xlabel('time [ms]');
+ylabel('|Klystron power| [kW]');
+subplot(2,2,2);
+plot(time,phase_KEK_4K_amp,'-b',time,phase_KEK_4K_RFon_amp,'-r',time,phase_KEK_4K_BLoff_amp,'-g',time,phase_KEK_4K_BLoff_RFon_amp,'-k',time,phase_KEK_4K_BLoff_amp,'-g');
+title('KEKB cavity, LHe at 4K');
+legend('RF off, BL on (nominal)', 'RF on, BL on', 'RF off, BL off', 'RF on, BL off');
+xlabel('time [ms]');
+ylabel('klystron phase [deg]');
+subplot(2,2,3);
+plot(time,abs(Vamp_LHC_4K).^2/(800*3e6)/1e3,'-b',time,abs(Vamp_LHC_4K_RFon).^2/(800*3e6)/1e3,'-r',time,abs(Vamp_LHC_4K_BLoff).^2/(800*3e6)/1e3,'-g',time,abs(Vamp_LHC_4K_BLoff_RFon).^2/(800*3e6)/1e3,'-k');
+title('HL-LHC cavity, LHe at 4K');
+legend('RF off, BL on (nominal)', 'RF on, BL on', 'RF off, BL off', 'RF on, BL off');
+xlabel('time [ms]');
+ylabel('|Klystron power| [kW]');
+subplot(2,2,4);
+plot(time,phase_LHC_4K_amp,'-b',time,phase_LHC_4K_RFon_amp,'-r',time,phase_LHC_4K_BLoff_amp,'-g',time,phase_LHC_4K_BLoff_RFon_amp,'-k',time,phase_LHC_4K_BLoff_amp,'-g');
+title('HL-LHC cavity, LHe at 4K');
+legend('RF off, BL on (nominal)', 'RF on, BL on', 'RF off, BL off', 'RF on, BL off');
+xlabel('time [ms]');
+ylabel('klystron phase [deg]');
+
+figure();
+subplot(2,2,1);
+plot(time,abs(Vamp_KEK_2K).^2/(800*3e6)/1e3,'-b',time,abs(Vamp_KEK_2K_RFon).^2/(800*3e6)/1e3,'-r',time,abs(Vamp_KEK_2K_BLoff).^2/(800*3e6)/1e3,'-g',time,abs(Vamp_KEK_2K_BLoff_RFon).^2/(800*3e6)/1e3,'-k');
+title('KEKB cavity, LHe at 2K');
+legend('RF off, BL on (nominal)', 'RF on, BL on', 'RF off, BL off', 'RF on, BL off');
+xlabel('time [ms]');
+ylabel('|Klystron power| [kW]');
+subplot(2,2,2);
+plot(time,phase_KEK_2K_amp,'-b',time,phase_KEK_2K_RFon_amp,'-r',time,phase_KEK_2K_BLoff_amp,'-g',time,phase_KEK_2K_BLoff_RFon_amp,'-k',time,phase_KEK_2K_BLoff_amp,'-g');
+title('KEKB cavity, LHe at 2K');
+legend('RF off, BL on (nominal)', 'RF on, BL on', 'RF off, BL off', 'RF on, BL off');
+xlabel('time [ms]');
+ylabel('klystron phase [deg]');
+subplot(2,2,3);
+plot(time,abs(Vamp_LHC_2K).^2/(800*3e6)/1e3,'-b',time,abs(Vamp_LHC_2K_RFon).^2/(800*3e6)/1e3,'-r',time,abs(Vamp_LHC_2K_BLoff).^2/(800*3e6)/1e3,'-g',time,abs(Vamp_LHC_2K_BLoff_RFon).^2/(800*3e6)/1e3,'-k');
+title('HL-LHC cavity, LHe at 2K');
+legend('RF off, BL on (nominal)', 'RF on, BL on', 'RF off, BL off', 'RF on, BL off');
+xlabel('time [ms]');
+ylabel('|Klystron power| [kW]');
+subplot(2,2,4);
+plot(time,phase_LHC_2K_amp,'-b',time,phase_LHC_2K_RFon_amp,'-r',time,phase_LHC_2K_BLoff_amp,'-g',time,phase_LHC_2K_BLoff_RFon_amp,'-k',time,phase_LHC_2K_BLoff_amp,'-g');
+title('HL-LHC cavity, LHe at 2K');
+legend('RF off, BL on (nominal)', 'RF on, BL on', 'RF off, BL off', 'RF on, BL off');
+xlabel('time [ms]');
+ylabel('klystron phase [deg]');

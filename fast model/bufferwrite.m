@@ -1,17 +1,16 @@
-function[LHCtrain, Pold0, Vout, Vtarget, vold, dvold, inputP, trev, qflag] = bufferwrite(VT, f0, Q0, Qe, phi0, tlat, ci, dV, bphi)
+function[LHCtrain, Pold0, Vout, Vtarget, dvold, inputP, trev, qflag] = bufferwrite(VT, f0, Q0, Qe, phi0, tlat, ci, dV, bphi)
 
-[trev, LHCtrain, tabort, qflag] = LHCbunchTrain(1, tlat, f0);
+[trev, LHCtrain, ~, qflag] = LHCbunchTrain(1, tlat, f0);
 
 QL = 1/(1/Q0 + 1/Qe);
 dVcomp = dV*exp(1i*(bphi + phi0)*pi/180);
 theta = 2*pi*f0*trev/length(LHCtrain)*(Q0 + Qe)/(2*Q0*Qe);
 
 Pamp = Qe/(2*QL)*VT*exp(1i*phi0*pi/180) + Qe/(2*QL)*dVcomp/(1 - exp(theta));
-nsteps = round((tlat + tabort)*f0);
+nsteps = round(tlat*f0);
 inputP = Pamp*ones(1,nsteps + 3);
-Vout = VT*exp(1i*phi0*pi/180);
+Vout = 1.01*VT*exp(1i*phi0*pi/180);
 Vtarget = VT*exp(1i*phi0*pi/180);
-vold = Vout;
 if real(ci) == 0 && imag(ci) ~= 0
     dvold = 1i*imag(inputP(1))/imag(ci);
 elseif real(ci) == 0 && imag(ci) == 0
