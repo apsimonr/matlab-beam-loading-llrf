@@ -6,7 +6,7 @@ import numpy as np
 import socket
 
 # Configuration
-Nturns = 2
+Nturns = 10
 Nbunches = 2808
 #Nbunches = 10
 
@@ -189,16 +189,17 @@ buckets = []
 if LLRFsim_online:
     LLRFsim_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     LLRFsim_socket.connect((LLRFsim_host, LLRFsim_port))
-
+    LLRFsim_socket_file = LLRFsim_socket.makefile()
     #LLRFsim_recdata = LLRFsim_socket.recv(1024)
-    LLRFsim_recdata = LLRFsim_socket.makefile().readline()
+    LLRFsim_recdata = LLRFsim_socket_file.readline()
     print "Recieved from LLRFsim: '" + LLRFsim_recdata[:-1] + "'"
     assert LLRFsim_recdata.startswith("bunchinfo ")
     nBuckets = int(LLRFsim_recdata.split()[1])
 
     bunchIdx = 0
     for i in xrange(nBuckets):
-        LLRFsim_recdata = LLRFsim_socket.recv(1024)
+        #LLRFsim_recdata = LLRFsim_socket.recv(1024)
+        LLRFsim_recdata = LLRFsim_socket_file.readline()
         print "Recieved from LLRFsim: '" + LLRFsim_recdata[:-1] + "'", i, bunchIdx
         LLRFsim_recdata_split = LLRFsim_recdata.split()
         LLRFsim_recdata_deltaT = float(LLRFsim_recdata_split[0])
@@ -211,7 +212,8 @@ if LLRFsim_online:
             buckets.append(Bucket(initial_bunches[bunchIdx],LLRFsim_recdata_deltaT))
             bunchIdx += 1
             
-    LLRFsim_recdata = LLRFsim_socket.recv(1024)
+    #LLRFsim_recdata = LLRFsim_socket.recv(1024)
+    LLRFsim_recdata = LLRFsim_socket_file.readline()
     print "Recieved from LLRFsim: '" + LLRFsim_recdata[:-1] + "'"
     assert LLRFsim_recdata == "end of bunch info\n",\
         "LLRFsim_recdata='"+LLRFsim_recdata+"'"
@@ -242,7 +244,8 @@ for turn in xrange(Nturns):
         
         #Read updated (or initial) cavity parameters from LLRFsim
         if LLRFsim_online:
-            LLRFsim_recdata = LLRFsim_socket.recv(1024)
+            #LLRFsim_recdata = LLRFsim_socket.recv(1024)
+            LLRFsim_recdata = LLRFsim_socket_file.readline()
             print "Recieved from LLRFsim: '" + LLRFsim_recdata[:-1] + "'"
             assert LLRFsim_recdata.startswith("bunchnum"),\
                 "LLRFsim_recdata='"+LLRFsim_recdata+"'"

@@ -9,7 +9,7 @@ theta = 2*pi*f0*trev/length(LHCtrain)*(Q0 + Qe)/(2*Q0*Qe);
 Pamp = Qe/(2*QL)*VT*exp(1i*phi0*pi/180) + Qe/(2*QL)*dVcomp/(1 - exp(theta));
 nsteps = round(tlat*f0);
 inputP = Pamp*ones(1,nsteps + 3);
-Vout = 1.01*VT*exp(1i*phi0*pi/180);
+Vout = VT*exp(1i*phi0*pi/180);
 Vtarget = VT*exp(1i*phi0*pi/180);
 if real(ci) == 0 && imag(ci) ~= 0
     dvold = 1i*imag(inputP(1))/imag(ci);
