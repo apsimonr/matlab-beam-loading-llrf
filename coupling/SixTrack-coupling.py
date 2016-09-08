@@ -22,8 +22,6 @@ LLRFsim_online = False #True
 LLRFsim_host = "127.0.0.1"
 LLRFsim_port = 4012
 
-
-bunches = []
 class Bunch:
     particles         = None # x, xp, y, yp, z, E (floating point numbers)
     particles_strings = None #BDEX format: xv(1,j) yv(1,j) xv(2,j) yv(2,j) sigmv(j) ejv(j) ejfv(j) rvv(j) dpsv(j) oidpsv(j) dpsv1(j), nlostp(j)
@@ -108,8 +106,44 @@ class Bunch:
             pipe.write(p+"\n")
         pipe.flush()
 
+class Bucket:
+    bunch  = None # Bunch object or None (in case of empty bunch)
+    deltaT = None # Time offset of bucket [ns]
+
+    initialMacroParticles = 0
+    
+    def __init__(self, bunch, deltaT):
+        self.bunch=bunch
+        self.detaT=deltaT
+
+        if self.bunch != None:
+            self.initialMacroParticles=self.bunch.get_Nparticles()
+    
+    def get_Qnorm(self):
+        if self.bunch != None:
+            return float(self.bunch.get_Nparticles()) / float(self.initialMacroParticles)
+        else:
+            return 0.0
+
+    def get_xMean(self):
+        if self.bunch != None:
+            return self.bunch.get_average(0)*1e-3 #[m]
+        else:
+            return 0.0
+    def get_yMean(self):
+        if self.bunch != None:
+            return self.bunch.get_average(2)*1e-3 #[m]
+        else:
+            return 0.0
+    def get_phiMean(self):
+        if self.bunch != None:
+            return self.bunch.get_average(4)/3e8*LLRF_fcav*360.0 #[m]
+        else:
+            return 0.0
+        
 # Initialize bunches array
 print "Reading initial distributions..."
+initial_bunches = []
 for i in xrange(1,Nbunches+1): #Counting from 1, ending on Nbunches.
     bunchfile_name = os.path.join("distributions","init_dist_"+str(i)+".txt")
     if not os.path.isfile(bunchfile_name):
@@ -117,9 +151,9 @@ for i in xrange(1,Nbunches+1): #Counting from 1, ending on Nbunches.
         print "File '"+bunchfile_name+"' not found."
         exit(1)
         
-    bunches.append(Bunch.loadParticlesFile(bunchfile_name))
+    initial_bunches.append(Bunch.loadParticlesFile(bunchfile_name))
     #print bunches[-1].particles
-    print i, map(bunches[-1].get_average, range(6))
+    print i, map(initial_bunches[-1].get_average, range(6))
 print "Done."
 
 #Open BDEX pipes
@@ -150,17 +184,47 @@ print "DYNK_readPipe_line: '" + DYNK_readPipe_line[:-1] + "'"
 assert DYNK_readPipe_line == "INIT ID=AR1_P for FUN=pipe_P1\n"
 
 
-#Open LLRFsim TCP/IP connection
+#Open LLRFsim TCP/IP connection and fill the buckets array
+buckets = []
 if LLRFsim_online:
     LLRFsim_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     LLRFsim_socket.connect((LLRFsim_host, LLRFsim_port))
+
+    LLRFsim_recdata = LLRFsim_socket.recv(1024)
+    print "Recieved from LLRFsim: '" + LLRFsim_recdata[:-1] + "'"
+    assert LLRFsim_recdata.startswith("bunchinfo ")
+    nBuckets = float(LLRFsim_recdata.split()[1])
+
+    bunchIdx = 0
+    for i in xrange(nBuckets):
+        pass
+    
+    
+    LLRFsim_recdata = LLRFsim_socket.recv(1024)
+    print "Recieved from LLRFsim: '" + LLRFsim_recdata[:-1] + "'"
+    assert LLRFsim_recdata == "THE_BUNCHINFO_OUTRO"
+    
+else:
+    nBuckets = 2*Nbunches
+    bunchIdx = 0
+    #Populate every 2nd bunch
+    for i in xrange(nBuckets):
+        if i % 2 == 0:
+            assert bunchIdx <= Nbunches
+            buckets.append(Bucket(initialBunches[bunchIdx],(1/400.0e6)*i))
+            bunchIdx += 1
+        else:
+            buckets.append(Bucket(None,(1/400.0e6)*i))
+nBuckets=len(buckets)        
     
 print "Starting tracking:"
+sixTurn = 1
 for turn in xrange(Nturns):
-    for bunchNum in xrange(Nbunches):
-        sixTurn = bunchNum + turn*Nbunches + 1
+    for bucketIdx in xrange(nBuckets):
+        #sixTurn = bunchNum + turn*Nbunches + 1
         print
-        print "turn/bunchNum/sixTurn = ", turn, bunchNum,sixTurn
+        #print "turn/bunchNum/sixTurn = ", turn, bunchNum,sixTurn
+        print "turn/bucketIdx = ", turn, bucketIdx
         
         #Read updated (or initial) cavity parameters from LLRFsim
         if LLRFsim_online:
@@ -176,6 +240,8 @@ for turn in xrange(Nturns):
             LLRF_Vt   = 3e6  #[V]
             LLRF_phi  = 90.0 #[deg]
             LLRF_fcav = 4e8  #[Hz]
+
+        if bucket[bucketIdx].
         
         #Send updated cavity parameters to SixTrack
         print "Updating voltage & phase using DYNK:"
@@ -267,7 +333,7 @@ for turn in xrange(Nturns):
         assert BDEX_readPipe_line == "BDEX TRACKING...\n"
         
         y_mean   = tempBunch.get_average(2)*1e-3                     #[m] # 0.0001 #[m]
-        phi_mean = tempBunch.get_average(2)/3e8*LLRF_fcav*360.0      #[deg]
+        phi_mean = tempBunch.get_average(4)/3e8*LLRF_fcav*360.0      #[deg]
 
         #Send bunch parameters at cavity to LLRFsim
         if LLRFsim_online:
