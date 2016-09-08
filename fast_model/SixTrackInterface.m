@@ -8,7 +8,7 @@ LHe_temp = 2; % helium temperature, choose 2K or 4K
 
 if sim_type == 0
     % HL-LHC crab cavity
-    VT = 3e6;
+    VT = 2.906991e6;
     RQ = 400;
 elseif sim_type == 1;
     % KEKB crab cavity
@@ -21,7 +21,7 @@ phi0 = 90;
 llrfoff = 0;
 rfoff_flag = 0; % turn off the RF when quench is detected
 
-llrf_lat = 2e-6; % low level RF latency
+llrf_lat = 1e-6; % low level RF latency
 
 [trev, LHCtrain, ~, qflag] = LHCbunchTrain(1, llrf_lat, fcav);
 
@@ -34,8 +34,14 @@ qoutput = qbunch*(1 + qjit*randn(size(qflag)));
 
 bcnt = 1;
 tcnt = 1;
-nturns = 40;
+nturns = 10;
 delfiles = 0;
+
+Vcavout = zeros(1,2808*nturns);
+Cphase = zeros(1,2808*nturns);
+bx = zeros(1,2808*nturns);
+bphase = zeros(1,2808*nturns);
+time = zeros(1,2808*nturns);
 
 %% delete parameter files if required
 if exist('cavParam.mat','file') == 2 && delfiles == 1
@@ -57,13 +63,21 @@ outbuffersize = 512;
 inbuffersize = 512;
 connect = 1;
 
+%% Run for bunch 1, turn 1
 dataout = [VT, phi0, fcav];
 [xout, bphiout, qout] = communicator(hostname, portnum, outbuffersize, inbuffersize, connect, dataout, LHCtrain, qflag);
+
+Vcavout(1) = VT;
+Cphase(1) = phi0;
+bx(1) = xout;
+bphase(1) = bphiout;
+time(1) = LHCtrain(1);
+ind1 = 1;
 
 %% run for other bunches
 for i = 1:length(qflag)*nturns - 1
 %     [bcntout, tcntout, Vcav, fout, ~] = BLmaster(VT, bphiout, xout, bcnt, tcnt, phi0, RQ, qbunch, quench);
-    [bcntout, tcntout, Vcav, fout, ~, ~, ~, ~, ~] = BLmaster(VT, bphiout, xout, bcnt, tcnt, phi0, RQ, qbunch*qout, quench, llRFoff, LHe_temp, rfoff_flag);
+    [bcntout, tcntout, Vcav, fout, ~, ~, ~, ~, ~] = BLmaster(VT, bphiout, xout, bcnt, tcnt, phi0, RQ, qbunch*qout, quench, llrfoff, LHe_temp, rfoff_flag);
     
     if tcnt ~= tcntout
         disp(tcntout);
@@ -76,13 +90,35 @@ for i = 1:length(qflag)*nturns - 1
     bcnt = bcntout;
     tcnt = tcntout;
     
-    if i < 2808*nturns - 1
+    if i < length(qflag)*nturns - 1
         connect = 0;
-        dataout = [abs(Vcav(end)), phase(Vcav(end)) - 90, fout(end)];
-        [xout, bphiout, qout] = communicator(hostname, portnum, outbuffersize, inbuffersize, connect, dataout, 0, 0);
     else
         connect = -1;
-        dataout = [abs(Vcav(end)), phase(Vcav(end)) - 90, fout(end)];
-        [xout, bphiout, qout] = communicator(hostname, portnum, outbuffersize, inbuffersize, connect, dataout, 0, 0);
+    end
+    
+    dataout = [abs(Vcav(end)), phase(Vcav(end)) - 90, fout(end)];
+    [xout, bphiout, qout] = communicator(hostname, portnum, outbuffersize, inbuffersize, connect, dataout, 0, 0);
+    
+    ind = mod(i - 1, length(qflag)) + 1;
+    
+    if qflag(ind) == 1
+        Vcavout(ind1) = abs(Vcav(end));
+        Cphase(ind1) = phase(Vcav(end)) - 90;
+        bx(ind1) = xout;
+        bphase(ind1) = bphiout;
+        time(ind1) = LHCtrain(ind) + (tcntout - 1)*trev;
+        ind1 = ind1 + 1;
     end
 end
+
+figure();
+plot(time,Vcavout);
+
+figure();
+plot(time,Cphase);
+
+figure();
+plot(time,bx);
+
+figure();
+plot(time,bphase);

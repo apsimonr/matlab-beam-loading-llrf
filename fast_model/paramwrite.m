@@ -54,6 +54,7 @@ elseif strcmp(filename, 'LLRFParam')
         prompt{5} = 'Amplifier Q-factor';
         prompt{6} = 'Maximum klystron power [kW]';
         prompt{7} = 'signal to noise ratio';
+%         answers = inputdlg(prompt,'Cavity parameters needed',1,{'2000', '25', '15.15','1.735e-6','400','80', '1000'});
         answers = inputdlg(prompt,'Cavity parameters needed',1,{'1000', '25', '30.3','3.47e-6','400','80', '1000'});
         
         tlat = str2double(answers{1})*1e-9;
