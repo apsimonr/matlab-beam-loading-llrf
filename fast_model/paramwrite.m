@@ -1,4 +1,4 @@
-function output = paramwrite(filename)
+function output = paramwrite(filename, sim_type)
 
 if strcmp(filename, 'cavParam')
     prompt = {};
@@ -21,7 +21,12 @@ if strcmp(filename, 'cavParam')
         prompt{3} = 'Resonant frequency (MHz)';
         prompt{4} = 'Frequency offset (MHz)';
         prompt{5} = 'Lorentz detuning factor (Hz/(MV/m)^2)';
-        answers = inputdlg(prompt,'Cavity parameters needed',1,{'1e9','5e5','400','0','200'});
+        
+        if sim_type == 0
+            answers = inputdlg(prompt,'Cavity parameters needed',1,{'1e9','5e5','400','0','200'});
+        else
+            answers = inputdlg(prompt,'Cavity parameters needed',1,{'1e9','1e5','400','0','200'});
+        end
         
         Q0 = str2double(answers{1});
         Qe = str2double(answers{2});
@@ -54,8 +59,15 @@ elseif strcmp(filename, 'LLRFParam')
         prompt{5} = 'Amplifier Q-factor';
         prompt{6} = 'Maximum klystron power [kW]';
         prompt{7} = 'signal to noise ratio';
+        
+        if sim_type == 0
+            answers = inputdlg(prompt,'Cavity parameters needed',1,{'1000', '25', '30.3','3.47e-6','400','80', '1000'});
+        else
+            answers = inputdlg(prompt,'Cavity parameters needed',1,{'1000', '25', '6.06','6.94e-7','400','80', '1000'});
+        end
+        
 %         answers = inputdlg(prompt,'Cavity parameters needed',1,{'2000', '25', '15.15','1.735e-6','400','80', '1000'});
-        answers = inputdlg(prompt,'Cavity parameters needed',1,{'1000', '25', '30.3','3.47e-6','400','80', '1000'});
+%         answers = inputdlg(prompt,'Cavity parameters needed',1,{'1000', '25', '30.3','3.47e-6','400','80', '1000'});
         
         tlat = str2double(answers{1})*1e-9;
         dlat = str2double(answers{2})*1e-9;

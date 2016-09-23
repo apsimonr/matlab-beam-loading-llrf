@@ -1,21 +1,34 @@
+clc;
 close all;
 clear all;
-clc;
 % profile on;
 
-VT = 3e6;
+sim_type = 0; % LH-LHC or KEKB-like cavity
+LHe_temp = 2; % helium temperature, choose 2K or 4K
+BLoff_flag = 1; % beamloading on (0) or off (1)
+llRFoff = 0;
+rfoff_flag = 0; % RF on (0) or off (1)
+
+if sim_type == 0
+    % HL-LHC crab cavity
+    VT = 3e6;
+    RQ = 400;
+    beamenergy = 7e12;
+elseif sim_type == 1;
+    % KEKB crab cavity
+    VT = 1e6;
+    RQ = 50;
+    beamenergy = 8e9;
+end
+
 bcnt = 1;
 tcnt = 1;
-nturns = 1;
+nturns = 20;
 phi0 = 90;
-RQ = 400;
 qbunch = 18.4e-9;
-quench = 0;
-beamenergy = 7e12;%8e9;%
+quench = 1;
 
-llRFon = 0;
-LHe_temp = 2;
-rfoff_flag = 0;
+
 
 xamp = 0;%-1e-4;%1e-4;
 xjit = 1e-5;
@@ -37,6 +50,7 @@ end
 Vcavout = zeros(1,35640*nturns);
 freqout = zeros(1,35640*nturns);
 Vampout = zeros(1,35640*nturns);
+tbunch = zeros(1,2808*nturns);
 xpos = zeros(1,2808*nturns);
 zpos = zeros(1,2808*nturns);
 xpos1 = zeros(1,2808*nturns);
@@ -94,8 +108,8 @@ for i = 1:length(LHCtrain)*nturns
             xpos1(indout) = vecstore(1,1,indstore) - xnom(1,1,indstore);
             zpos1(indout) = 360*4e8*(vecstore(1,5,indstore) - xnom(1,5,indstore))/3e8;
         else
-            xpos1(indout) = 0;
-            zpos1(indout) = 0;
+            xpos1(indout) = 1000;
+            zpos1(indout) = 1000;
         end
         
         if qflag1(2,indstore) == 1
@@ -104,22 +118,28 @@ for i = 1:length(LHCtrain)*nturns
             
             xout = vecstore(2,1,indstore);
             bphiout = 2*pi*4e8*vecstore(2,5,indstore)/3e8;
-            indout = indout + 1;
         else
-            xpos(indout) = 0;
-            zpos(indout) = 0;
+            xpos(indout) = 1000;
+            zpos(indout) = 1000;
         end
         
         if qflag1(3,indstore) == 1
             xpos2(indout) = vecstore(3,1,indstore) - xnom(3,1,indstore);
             zpos2(indout) = 360*4e8*(vecstore(3,5,indstore) - xnom(3,5,indstore))/3e8;
         else
-            xpos2(indout) = 0;
-            zpos2(indout) = 0;
+            xpos2(indout) = 1000;
+            zpos2(indout) = 1000;
         end
+        
+        tbunch(indout) = LHCtrain(indstore) + trev*(tcnt - 1);
+        indout = indout + 1;
     end
     
-    [bcntout, tcntout, Vcav, fout, Vamp, Pinout, tq, fnom, debug] = BLmaster(VT, bphiout, xout, bcnt, tcnt, phi0, RQ, qbunch*qflag1(2,indstore), quench, llRFon);
+    if BLoff_flag == 0
+        [bcntout, tcntout, Vcav, fout, Vamp, Pinout, tq, fnom, debug] = BLmaster(VT, bphiout, xout, bcnt, tcnt, phi0, RQ, qbunch*qflag1(2,indstore), quench, llRFoff, LHe_temp, rfoff_flag, sim_type);
+    elseif BLoff_flag == 1
+        [bcntout, tcntout, Vcav, fout, Vamp, Pinout, tq, fnom, debug] = BLmaster(VT, bphiout, xout, bcnt, tcnt, phi0, RQ, 0, quench, llRFoff, LHe_temp, rfoff_flag, sim_type);
+    end
     
     if qflag1(2,indstore) == 1
         pxcav = real(Vcav(1)*exp(1i*2*pi*4e8*vecstore(:,5,indstore)'/3e8))/beamenergy;
@@ -197,19 +217,11 @@ end
 title('Phi vs t');
 
 figure();
-plot(time,abs(Vampout).^2/(2*RQ*5e5),'-b');%,time,abs(Pin).^2/(2*RQ*5e5),'-r');
-% if quench == 1
-%     hold all;
-%     plot([tq tq], [max(abs(Pin).^2/(2*RQ*5e5)) min(abs(Pin).^2/(2*RQ*5e5))],'-k');
-% end
+plot(time,abs(Vampout),'-b');
 title('|Pamp| vs t');
 
 figure();
-plot(time,mod(phase(Vampout)*180/pi+90,360) - 180,'-b');%,time,mod(phase(Pin)*180/pi+90,360) - 180,'-r');
-% if quench == 1
-%     hold all;
-%     plot([tq tq], [-180 180],'-k');
-% end
+plot(time,mod(phase(Vampout)*180/pi+90,360) - 180,'-b');
 title('Klystron phase vs t');
 
 figure();
@@ -220,21 +232,39 @@ if quench == 1
 end
 title('df vs t');
 
+% figure();
+% plot(linspace(time(1),time(end),length(xpos)),xpos,'-b',linspace(time(1),time(end),length(xpos1)),xpos1,'-r',linspace(time(1),time(end),length(xpos2)),xpos2,'-g');
+% if quench == 1
+%     hold all;
+%     plot([tq tq], [max(xpos) min(xpos)],'-k');
+% end
+% title('xpos');
+% 
+% figure();
+% plot(linspace(time(1),time(end),length(zpos)),zpos,'-b',linspace(time(1),time(end),length(zpos1)),zpos1,'-r',linspace(time(1),time(end),length(zpos2)),zpos2,'-g');
+% if quench == 1
+%     hold all;
+%     plot([tq tq], [max(zpos) min(zpos)],'-k');
+% end
+% title('zpos');
+
 figure();
-plot(linspace(time(1),time(end),length(xpos)),xpos,'-b',linspace(time(1),time(end),length(xpos1)),xpos1,'-r',linspace(time(1),time(end),length(xpos2)),xpos2,'-g');
+plot(tbunch,xpos,'-b',tbunch,xpos1,'-r',tbunch,xpos2,'-g');
 if quench == 1
     hold all;
     plot([tq tq], [max(xpos) min(xpos)],'-k');
 end
 title('xpos');
+ylim([-2e-2 2e-2]);
 
 figure();
-plot(linspace(time(1),time(end),length(zpos)),zpos,'-b',linspace(time(1),time(end),length(zpos1)),zpos1,'-r',linspace(time(1),time(end),length(zpos2)),zpos2,'-g');
+plot(tbunch,zpos,'-b',tbunch,zpos1,'-r',tbunch,zpos2,'-g');
 if quench == 1
     hold all;
     plot([tq tq], [max(zpos) min(zpos)],'-k');
 end
 title('zpos');
+ylim([-90 90]);
 
 figure();
 plot(time,abs(Vcavout)/VT,'-b',time,mod(phase(Vcavout)/pi + 1/2,2) - 1,'-r');
@@ -247,49 +277,8 @@ disp(std(phase(Vcavout))*180/pi);
 disp('The RMS amplitude jitter is:');
 disp(std(abs(Vcavout)));
 
-quick_fudge = 0;
-
-if quick_fudge == 1
-    Vcav_KEK_4K_BLoff_RFon = Vcavout;
-    Vamp_KEK_4K_BLoff_RFon = Vampout;
-    df_KEK_4K_BLoff_RFon = freqout - fnom;
-    xpos_KEK_4K_BLoff_RFon = xpos;
-    xpos1_KEK_4K_BLoff_RFon = xpos1;
-    xpos2_KEK_4K_BLoff_RFon = xpos2;
-    zpos_KEK_4K_BLoff_RFon = zpos;
-    delete('KEK_4K_BLoff_RFon.mat');
-    save('KEK_4K_BLoff_RFon', 'Vcav_KEK_4K_BLoff_RFon', 'Vamp_KEK_4K_BLoff_RFon', 'df_KEK_4K_BLoff_RFon', 'xpos_KEK_4K_BLoff_RFon', 'xpos1_KEK_4K_BLoff_RFon', 'xpos2_KEK_4K_BLoff_RFon', 'zpos_KEK_4K_BLoff_RFon');
-elseif quick_fudge == 2
-    Vcav_KEK_2K_BLoff_RFon = Vcavout;
-    Vamp_KEK_2K_BLoff_RFon = Vampout;
-    df_KEK_2K_BLoff_RFon = freqout - fnom;
-    xpos_KEK_2K_BLoff_RFon = xpos;
-    xpos1_KEK_2K_BLoff_RFon = xpos1;
-    xpos2_KEK_2K_BLoff_RFon = xpos2;
-    zpos_KEK_2K_BLoff_RFon = zpos;
-    delete('KEK_2K_BLoff_RFon.mat');
-    save('KEK_2K_BLoff_RFon', 'Vcav_KEK_2K_BLoff_RFon', 'Vamp_KEK_2K_BLoff_RFon', 'df_KEK_2K_BLoff_RFon', 'xpos_KEK_2K_BLoff_RFon', 'xpos1_KEK_2K_BLoff_RFon', 'xpos2_KEK_2K_BLoff_RFon', 'zpos_KEK_2K_BLoff_RFon');
-elseif quick_fudge == 3
-    Vcav_LHC_4K_BLoff_RFon = Vcavout;
-    Vamp_LHC_4K_BLoff_RFon = Vampout;
-    df_LHC_4K_BLoff_RFon = freqout - fnom;
-    xpos_LHC_4K_BLoff_RFon = xpos;
-    xpos1_LHC_4K_BLoff_RFon = xpos1;
-    xpos2_LHC_4K_BLoff_RFon = xpos2;
-    zpos_LHC_4K_BLoff_RFon = zpos;
-    delete('LHC_4K_BLoff_RFon.mat');
-    save('LHC_4K_BLoff_RFon', 'Vcav_LHC_4K_BLoff_RFon', 'Vamp_LHC_4K_BLoff_RFon', 'df_LHC_4K_BLoff_RFon', 'xpos_LHC_4K_BLoff_RFon', 'xpos1_LHC_4K_BLoff_RFon', 'xpos2_LHC_4K_BLoff_RFon', 'zpos_LHC_4K_BLoff_RFon');
-elseif quick_fudge == 4
-    Vcav_LHC_2K_BLoff_RFon = Vcavout;
-    Vamp_LHC_2K_BLoff_RFon = Vampout;
-    df_LHC_2K_BLoff_RFon = freqout - fnom;
-    xpos_LHC_2K_BLoff_RFon = xpos;
-    xpos1_LHC_2K_BLoff_RFon = xpos1;
-    xpos2_LHC_2K_BLoff_RFon = xpos2;
-    zpos_LHC_2K_BLoff_RFon = zpos;
-    delete('LHC_2K_BLoff_RFon.mat');
-    save('LHC_2K_BLoff_RFon', 'Vcav_LHC_2K_BLoff_RFon', 'Vamp_LHC_2K_BLoff_RFon', 'df_LHC_2K_BLoff_RFon', 'xpos_LHC_2K_BLoff_RFon', 'xpos1_LHC_2K_BLoff_RFon', 'xpos2_LHC_2K_BLoff_RFon', 'zpos_LHC_2K_BLoff_RFon', 'time');
-end
-
+loss_frac = (sum(squeeze(qflag1(1,:))) + sum(squeeze(qflag1(2,:))) + sum(squeeze(qflag1(3,:))))/(3*2808)*100;
+disp([num2str(loss_frac) ' %']);
+quick_save(sim_type, LHe_temp, BLoff_flag, rfoff_flag, Vcavout, Vampout, freqout, fnom, xpos, xpos1, xpos2, zpos, time, loss_frac, tbunch);
 
 % profile viewer;

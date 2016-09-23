@@ -50,16 +50,6 @@ for i = 1:length(Vcav)
     PI(i) = real(temp);
     PQ(i) = imag(temp);
     
-%     mag = abs(temp);
-%     phi = phase(temp);
-%     if mag > Pmax
-%         PI(i) = Pmax*cos(phi);
-%         PQ(i) = Pmax*sin(phi);
-%     else
-%         PI(i) = real(temp);
-%         PQ(i) = imag(temp);
-%     end
-    
     if inddlat == ndlat
         Pinout2 = PI(i) + 1i*PQ(i);
         Pinout1 = Pinout2;
@@ -77,7 +67,10 @@ Vamp = RKamp(Qa, f0, Pin0, delV, Pold0);
 
 for i = 1:length(Vamp)
     if abs(Vamp(i)) > Pmax
-        Vamp(i) = Pmax*Vamp(i)/abs(Vamp(i));
+        Vamp(i) = Pmax*sign(Vamp(i));
+    end
+    if rfoff(i) == 1
+        Vamp(i) = 0;
     end
 end
         

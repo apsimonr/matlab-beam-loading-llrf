@@ -1,4 +1,4 @@
-function [bcntout, tcntout, Vcav, fout, Vamp, Pinout, quenchtime, fnom, dfq] = BLmaster(VT, bphi, xbunch, bcnt, tcnt, phi0, RQ, qbunch, quench, llrfoff, LHe_temp, rfoff_flag)
+function [bcntout, tcntout, Vcav, fout, KPout, Pinout, quenchtime, fnom, dfq] = BLmaster(VT, bphi, xbunch, bcnt, tcnt, phi0, RQ, qbunch, quench, llrfoff, LHe_temp, rfoff_flag, sim_type)
 %% Parameter definitions
 %%-------------------------------------------------------------------------
 % VT: initial transverse voltage in the cavity [V]
@@ -36,7 +36,7 @@ persistent tlat dlat cp ci Qa Pmax noiseamp
 %%-------------------------------------------------------------------------
 
 if isempty(Q0)
-    output = paramwrite('cavParam');
+    output = paramwrite('cavParam', sim_type);
     Q0 = output{1};
     Qe = output{2};
     f0 = output{3};
@@ -45,7 +45,7 @@ if isempty(Q0)
 end
 
 if isempty(tlat)
-    output = paramwrite('LLRFParam');
+    output = paramwrite('LLRFParam', sim_type);
     tlat = output{1};
     dlat = output{2};
     cp = output{3};
@@ -167,6 +167,8 @@ end
 delV = LLRFinputs(Vout, f0);
 
 [dvold, Vamp, Pinout] = LLRF(Vcav, Vtarget, dvold, f0, cp, ci, Qa, delV, Pmax, Pold0, dlat, noiseamp, rfoff, llrfoff);
+
+KPout = Vamp.^2./(2*RQ*Qe);
 
 [Pold0, Vout, inputP] = bufferout(Vamp, Vcav, inputP);
 
